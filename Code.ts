@@ -45,7 +45,7 @@ function createPrePicklist(sheetData: Object[][]) {
   newData= deleteUserDefinedColumns(newData, headerRow)
   headerRow = newData[0]
   newData = newData.map((row, i) => {
-    if(i === 0){ return ["PO", ...row] }
+    if(i === 0){ return ["PO", ...row, "In Stock"] }
     let { poColumnIndex, storeColumnIndex } = getColumnIndexes(headerRow)
     let po = row[poColumnIndex]
     let store = row[storeColumnIndex]
