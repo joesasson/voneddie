@@ -50,10 +50,10 @@ function createPrePicklist(sheetData: Object[][]) {
     let po = row[poColumnIndex]
     let store = row[storeColumnIndex]
     let poWithStore = `${po}-${store}`
-    return [poWithStore, ...row]
+    return [poWithStore, ...row, false]
   })
-  // 3. Retrieve Sku data and add as new column - PreparePickList (In Data Tab select fix broken links and open source and close it to get sku) [AUTO]
-  // 5. Sort by upc [AUTO]
+  // 3. Retrieve Sku data and add as new column - PreparePickList
+  // 5. Sort by upc 
   // 6. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist
   return newData
 }

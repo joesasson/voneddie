@@ -27,3 +27,19 @@ Prior to writing the script the following steps had to be taken manually:
   16. Print packing slip and ucc, they should be aligned for warehouse
   17. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
 
+## TODO
+
+- [ ] Get the sku data and insert before first column
+- [ ] Sort by UPC
+- [ ] Create another sheet called picklist that has columns sku, upc, po, qty, in stock
+- [ ] Send Print job to the printer
+- [ ] Add another drop down option for after stock was taken
+- [ ] Generate another sheet that contains invoice data for quickbooks without 0 qty items
+- [ ] sort by upc, then store
+- [ ] Create a new sheet for shipping data
+  - [ ] by store
+  - [ ] units
+  - [ ] weight calculation =ROUNDUP(E4*1.2+1, 0)
+- [ ] Add message box informing that shipping data is available in the shipping tab and that tracking and invoices need to be entered there
+- [ ] Generate another sheet with a checklist of all the steps in each row and a checkbox next to it
+

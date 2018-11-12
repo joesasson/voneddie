@@ -3,3 +3,4 @@ package-lock.json
 tsconfig.json
 .gitignore
 /node_modules
+README.md
