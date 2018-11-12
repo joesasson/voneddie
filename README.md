@@ -2,7 +2,7 @@
 
 This project aims to automate the process for receiving and fulfilling an EDI order from Von Maur at Marc Joseph New York.
 
-It is written in Google Apps Script as a Google Sheet add-on utilizing [clasp].
+It is written in Google Apps Script as a Google Sheet add-on utilizing [clasp](https://github.com/google/clasp).
 
 There is also an excel `.bas` file that was written to automate excel workflow.
 
