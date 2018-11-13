@@ -32,11 +32,13 @@ function createPicklist(){
   let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
   let sheet = ss.getSheets()[0]
   let sheetData = sheet.getDataRange().getValues()
-  let prePicklistData = createPrePicklist(sheetData)
-  let picklistSheet = createNewSheetWithData(ss, prePicklistData, "pre-picklist")
+  let prePicklistData = generatePrePicklist(sheetData)
+  createNewSheetWithData(ss, prePicklistData, "pre-picklist")
+  let picklistData = generatePicklist(prePicklistData)
+  createNewSheetWithData(ss, picklistData, "picklist")
 }
 
-function createPrePicklist(sheetData: Object[][]) {
+function generatePrePicklist(sheetData: Object[][]) {
   // Remove top row
   let newData = sheetData.filter((row, i) => i > 0)
   let headerRow = newData[0]
@@ -44,8 +46,8 @@ function createPrePicklist(sheetData: Object[][]) {
   // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
   newData = deleteUserDefinedColumns(newData, headerRow)
   headerRow = newData[0]
-  newData = newData.map((row, i) => {
-    let { poColumnIndex, storeColumnIndex, barcodeColumnIndex } = getColumnIndexes(headerRow)
+  let { poColumnIndex, storeColumnIndex, barcodeColumnIndex } = getColumnIndexes(headerRow)
+  newData = newData.map((row, i) => {  
     if(i === 0){ return ["sku", "PO", ...row, "In Stock"] }
     // Add sku column
     // 3. Retrieve Sku data and add as new column - PreparePickList
@@ -54,7 +56,7 @@ function createPrePicklist(sheetData: Object[][]) {
     let po = row[poColumnIndex]
     let store = row[storeColumnIndex]
     let poWithStore = `${po}-${store}`
-    return [sku, poWithStore, ...row, false]
+    return [sku, poWithStore, ...row, ""]
   })
   // 5. Sort by upc
   newData = sortByUpc(newData)
@@ -63,17 +65,47 @@ function createPrePicklist(sheetData: Object[][]) {
 }
 
 const getColumnIndexes = (headerRow: Array<Object>) => {
-  let poColumnIndex = getColumnIndex(headerRow, "PO Number")
-  let storeColumnIndex = getColumnIndex(headerRow, "Buyer Store No")
-  let barcodeColumnIndex = getColumnIndex(headerRow, "Product Code")
-  return {
-    barcodeColumnIndex,
-    poColumnIndex,
-    storeColumnIndex
-  }
+  let ColumnNames = [
+    {
+      header: "PO Number",
+      columnName: "po"
+    },
+    {
+      header: "Buyer Store No",
+      columnName: 'store'
+    },
+    {
+      header: 'Product Code',
+      columnName: 'barcode'
+    },
+    {
+      header: "sku",
+      columnName: "sku"
+    },
+    {
+      header: "PO",
+      columnName: 'newPo'
+    },
+    {
+      header: "In Stock",
+      columnName: 'inStock'
+    }
+  ]
+  let indexes = {}
+  indexes = getColumns(headerRow, ColumnNames)
+  return indexes
+
 }
 
-const getColumnIndex = (headerRow: Array<Object>, headerTitle: String) => headerRow.indexOf(headerTitle)
+const getColumns = (headerRow: Object[], columnNames) => {
+  let indexes = {}
+  columnNames.forEach(col => indexes[`${col.columnName}ColumnIndex`] = getColumnIndex(headerRow, col.header))
+  return indexes
+}
+
+const getColumnIndex = (headerRow: Array<Object>, headerTitle: String, name?: String) =>  { 
+  return headerRow.indexOf(headerTitle)
+}
 
 const deleteUserDefinedColumns = (sheetData: Object[][], headerRow: Array<Object>) => {
   // I want to delete the nth element of each of the rows
@@ -140,5 +172,17 @@ const sortByUpc = (data) => {
   let { barcodeColumnIndex } = getColumnIndexes(headerRow)
   let newData = data.sort((a, b) => Number(a[barcodeColumnIndex]) - Number(b[barcodeColumnIndex]))
   return newData
+}
+
+const generatePicklist = data => {
+  let headerRow = data[0]
+  // map through returning only the columns that I want
+  let columnIndices: Object = getColumnIndexes(headerRow)
+  let headerIndices = Object.keys(columnIndices).map(key => columnIndices[key]).sort((a, b) => a - b) // [0, 1, 4, 24]
+  return data.map(row => {
+    let newRow = []
+    headerIndices.forEach(i => { Logger.log(i) ; newRow.push(row[i])})
+    return newRow
+  })
 }
 

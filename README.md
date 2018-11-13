@@ -12,8 +12,8 @@ Prior to writing the script the following steps had to be taken manually:
   1. Go to [diCentral Portal](https://diwebc.dicentral.com/Main.aspx) and find desired PO number
   2. Select all stores and export as csv
   3. Save as {po#}.xls
-  4. Add column for sku via a lookup in a barcode reference on another spreadsheet
-  5. Add column for po+store by combining po column and store column
+  4. Add column for sku via a lookup in a barcode reference on another spreadsheet [AUTO]
+  5. Add column for po+store by combining po column and store column [AUTO]
   6. Remove extraneous data, add column called "in stock"  [AUTO]
   7. Sort by upc
   8. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist
@@ -30,8 +30,8 @@ Prior to writing the script the following steps had to be taken manually:
 ## TODO
 
 - [x] Get the sku data and insert before first column
-- [ ] Sort by UPC
-- [ ] Create another sheet called picklist that has columns sku, upc, po, qty, in stock
+- [x] Sort by UPC
+- [x] Create another sheet called picklist that has columns sku, upc, po, qty, in stock
 - [ ] Send Print job to the printer
 - [ ] Add another drop down option for after stock was taken
 - [ ] Generate another sheet that contains invoice data for quickbooks without 0 qty items
