@@ -45,9 +45,10 @@ function createPrePicklist(sheetData: Object[][]) {
   newData = deleteUserDefinedColumns(newData, headerRow)
   headerRow = newData[0]
   newData = newData.map((row, i) => {
-    if(i === 0){ return ["sku", "PO", ...row, "In Stock"] }
     let { poColumnIndex, storeColumnIndex, barcodeColumnIndex } = getColumnIndexes(headerRow)
+    if(i === 0){ return ["sku", "PO", ...row, "In Stock"] }
     // Add sku column
+    // 3. Retrieve Sku data and add as new column - PreparePickList
     let sku = getSkuFromBarcodeReference(row[barcodeColumnIndex])
     // add PO column
     let po = row[poColumnIndex]
@@ -55,8 +56,8 @@ function createPrePicklist(sheetData: Object[][]) {
     let poWithStore = `${po}-${store}`
     return [sku, poWithStore, ...row, false]
   })
-  // 3. Retrieve Sku data and add as new column - PreparePickList
-  // 5. Sort by upc 
+  // 5. Sort by upc
+  newData = sortByUpc(newData)
   // 6. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist
   return newData
 }
@@ -114,10 +115,6 @@ const createNewSheetWithData = (ss: GoogleAppsScript.Spreadsheet.Spreadsheet, da
 }
 
 const getSkuFromBarcodeReference = upc => {
-  // I want to make a lightweight reference
-  // What if I use the graphql api for this?
-  // So the plan is to deploy a simple api that only has barcodes and skus
-  // this script will make a request for all the barcodes that it holds and receive a list of skus
   const url = 'https://sku-barcode-lookup.herokuapp.com/graphql'
   const payload = {
     query:  
@@ -129,9 +126,19 @@ const getSkuFromBarcodeReference = upc => {
     muteHttpExceptions: true,
     payload: JSON.stringify(payload)
   }
-  // let params = 
+  //@ts-ignore: 
+  // Argument of type '{ method: string;}' is not assignable to parameter of type 'URLFetchRequestOptions'.
+  // Types of property 'method' are incompatible.
+  // Type 'string' is not assignable to type '"post" | "get" | "delete" | "patch" | "put"'. 
   let response = UrlFetchApp.fetch(url, options).getContentText()
   let skus = JSON.parse(response).data.pair.sku
   return skus
+}
+
+const sortByUpc = (data) => {
+  let headerRow = data[0]
+  let { barcodeColumnIndex } = getColumnIndexes(headerRow)
+  let newData = data.sort((a, b) => Number(a[barcodeColumnIndex]) - Number(b[barcodeColumnIndex]))
+  return newData
 }
 

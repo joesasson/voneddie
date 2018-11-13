@@ -5,3 +5,5 @@ tsconfig.json
 /node_modules
 README.md
 VonMaurAutomation.bas
+/.git
+.claspignore
