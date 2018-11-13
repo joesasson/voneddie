@@ -14,7 +14,7 @@ Prior to writing the script the following steps had to be taken manually:
   3. Save as {po#}.xls
   4. Add column for sku via a lookup in a barcode reference on another spreadsheet
   5. Add column for po+store by combining po column and store column
-  6. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
+  6. Remove extraneous data, add column called "in stock"  [AUTO]
   7. Sort by upc
   8. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist
   9. Add stock data in column called "in stock",copy values to new sheet called invoiced
@@ -29,7 +29,7 @@ Prior to writing the script the following steps had to be taken manually:
 
 ## TODO
 
-- [ ] Get the sku data and insert before first column
+- [x] Get the sku data and insert before first column
 - [ ] Sort by UPC
 - [ ] Create another sheet called picklist that has columns sku, upc, po, qty, in stock
 - [ ] Send Print job to the printer

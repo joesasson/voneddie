@@ -1,7 +1,7 @@
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu()
+    .addItem("Create Picklist", "createPicklist")
     .addItem('Open Voneddie Sidebar', 'showInstructions')
-    .addItem("Process EDI", "processEdi")
     .addToUi()
 }
 
@@ -12,7 +12,7 @@ function showInstructions(){
   SpreadsheetApp.getUi().showSidebar(html)
 }
 
-function processEdi(){
+function createPicklist(){
   // Process Steps
   // 1. Download CSV and save as {PO number}.xlsx
   // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
@@ -42,15 +42,18 @@ function createPrePicklist(sheetData: Object[][]) {
   let headerRow = newData[0]
   // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
   // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
-  newData= deleteUserDefinedColumns(newData, headerRow)
+  newData = deleteUserDefinedColumns(newData, headerRow)
   headerRow = newData[0]
   newData = newData.map((row, i) => {
-    if(i === 0){ return ["PO", ...row, "In Stock"] }
-    let { poColumnIndex, storeColumnIndex } = getColumnIndexes(headerRow)
+    if(i === 0){ return ["sku", "PO", ...row, "In Stock"] }
+    let { poColumnIndex, storeColumnIndex, barcodeColumnIndex } = getColumnIndexes(headerRow)
+    // Add sku column
+    let sku = getSkuFromBarcodeReference(row[barcodeColumnIndex])
+    // add PO column
     let po = row[poColumnIndex]
     let store = row[storeColumnIndex]
     let poWithStore = `${po}-${store}`
-    return [poWithStore, ...row, false]
+    return [sku, poWithStore, ...row, false]
   })
   // 3. Retrieve Sku data and add as new column - PreparePickList
   // 5. Sort by upc 
@@ -60,15 +63,16 @@ function createPrePicklist(sheetData: Object[][]) {
 
 const getColumnIndexes = (headerRow: Array<Object>) => {
   let poColumnIndex = getColumnIndex(headerRow, "PO Number")
-  Logger.log({poColumnIndex, headerRow })
   let storeColumnIndex = getColumnIndex(headerRow, "Buyer Store No")
+  let barcodeColumnIndex = getColumnIndex(headerRow, "Product Code")
   return {
+    barcodeColumnIndex,
     poColumnIndex,
     storeColumnIndex
   }
 }
 
-const getColumnIndex = (headerRow: Array<Object>, headerTitle) => headerRow.indexOf(headerTitle)
+const getColumnIndex = (headerRow: Array<Object>, headerTitle: String) => headerRow.indexOf(headerTitle)
 
 const deleteUserDefinedColumns = (sheetData: Object[][], headerRow: Array<Object>) => {
   // I want to delete the nth element of each of the rows
@@ -107,5 +111,27 @@ const createNewSheetWithData = (ss: GoogleAppsScript.Spreadsheet.Spreadsheet, da
   let targetRange = newSheet.getRange(1, 1, dataHeight, dataWidth)
   targetRange.setValues(data)
   return newSheet
+}
+
+const getSkuFromBarcodeReference = upc => {
+  // I want to make a lightweight reference
+  // What if I use the graphql api for this?
+  // So the plan is to deploy a simple api that only has barcodes and skus
+  // this script will make a request for all the barcodes that it holds and receive a list of skus
+  const url = 'https://sku-barcode-lookup.herokuapp.com/graphql'
+  const payload = {
+    query:  
+    `{ pair(upc:"${upc}") { sku } }` 
+  }
+  const options = {
+    method: "post",
+    contentType: 'application/json' ,
+    muteHttpExceptions: true,
+    payload: JSON.stringify(payload)
+  }
+  // let params = 
+  let response = UrlFetchApp.fetch(url, options).getContentText()
+  let skus = JSON.parse(response).data.pair.sku
+  return skus
 }
 
