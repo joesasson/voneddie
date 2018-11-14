@@ -225,23 +225,6 @@ const generatePicklist = data => {
   })
 }
 
-const generateInvoiceImport = picklistData => {
-  // Output the following columns:
-    // sku, PO, PO Date (Maybe change to current date), cancel date, rate, in stock
-    let desiredHeaders = [
-      'sku',
-      'PO',
-      'Ship Not Before', 
-      'Cancel After',
-      'Unit Price',
-      'In Stock'
-    ] // I can easily read these from somewhere else i.e. input box, sidebar, another sheet, etc.
-    let newData = extractColumnsByHeader(picklistData, desiredHeaders)
-  // remove the 0 quantity rows
-  // sort by upc then store
-  return newData
-}
-
 const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[]) => {
   let headerRow = sheetData[0]
   // map headers into indexes
@@ -257,6 +240,9 @@ const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[])
   return newData
 }
 
-const generateShippingDetails = () => {}
+const generateShippingDetails = invoiceData => {
+  // pivot data to store number, sum of in stock qty, weight calculation
+  // the rest is manual invoice and tracking number after the import
+}
 
 const generateEdiDetails = () => {}

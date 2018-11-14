@@ -33,13 +33,14 @@ Prior to writing the script the following steps had to be taken manually:
 - [x] Sort by UPC
 - [x] Create another sheet called picklist that has columns sku, upc, po, qty, in stock
 - [ ] Send Print job to the printer
-- [ ] Add another drop down option for after stock was taken
-- [ ] Generate another sheet that contains invoice data for quickbooks without 0 qty items
-- [ ] sort by upc, then store
+- [x] Add another drop down option for after stock was taken
+- [x] Generate another sheet that contains invoice data for quickbooks without 0 qty items
+- [x] sort by upc, then store
 - [ ] Create a new sheet for shipping data
   - [ ] by store
   - [ ] units
   - [ ] weight calculation =ROUNDUP(E4*1.2+1, 0)
 - [ ] Add message box informing that shipping data is available in the shipping tab and that tracking and invoices need to be entered there
+- [ ] Add another sheet with shipping data and sku qtys by store
 - [ ] Generate another sheet with a checklist of all the steps in each row and a checkbox next to it
 
