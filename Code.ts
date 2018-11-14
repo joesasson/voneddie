@@ -43,8 +43,9 @@ function createInvoiceImport(){
   let prePicklist = ss.getSheetByName('pre-picklist')
   let prePicklistData = prePicklist.getDataRange().getValues()
   let invoiceImportData = generateInvoiceImport(prePicklistData)
-  createNewSheetWithData(ss, invoiceImportData, "invoice import")
-  let shippingDetails = generateShippingDetails()
+  createNewSheetWithData(ss, invoiceImportData, "Invoice Import")
+  let shippingDetailData = generateShippingDetails(invoiceImportData)
+  createNewSheetWithData(ss, shippingDetailData, "Shipping Details")
   let ediDetails = generateEdiDetails()
 }
 
@@ -243,6 +244,40 @@ const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[])
 const generateShippingDetails = invoiceData => {
   // pivot data to store number, sum of in stock qty, weight calculation
   // the rest is manual invoice and tracking number after the import
+  // create an object { storenumber1: sumqty, storenumber2: sumqty }
+  let sumsByStore = sumStoreQtys(invoiceData)
+  Logger.log(sumsByStore)
+  // then map through keys and return [storenumber, qty, weight,'','']
+  // headers should be ['storenumber', 'qty', 'weight', 'invoice', 'tracking #']
+  let shippingDetails = getShippingDetails(sumsByStore)
+  Logger.log(shippingDetails)
+  return shippingDetails
 }
 
 const generateEdiDetails = () => {}
+
+const sumStoreQtys = sheetData => {
+  let headerRow = sheetData[0]
+  let { storeColumnIndex, inStockColumnIndex } = getColumnIndexes(headerRow)
+  let qtysByStore = {}
+  sheetData.forEach(row => {
+    let store = row[storeColumnIndex]
+    let qty = row[inStockColumnIndex]
+    let currentQty = qtysByStore[store]
+    currentQty ? qtysByStore[store] = currentQty + qty : qtysByStore[store] = qty
+  })
+  return qtysByStore
+}
+
+const getShippingDetails = storeQtys => {
+  return Object.keys(storeQtys).map((key, i) => {
+    if(isNaN(Number(key))){
+      return [key, storeQtys[key], 'Weight', 'Invoice #', 'Tracking #']
+    }
+    let qty = storeQtys[key]
+    let weight = calculateWeight(qty)
+    return [key, qty, weight, '', '']
+  })
+}
+
+const calculateWeight = qty => Math.ceil(qty * 1.2 + 1)
