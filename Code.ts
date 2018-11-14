@@ -1,6 +1,24 @@
+// Process Steps
+  // 1. Download CSV and save as {PO number}.xlsx [MANUAL]
+  // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
+  // 3. Retrieve Sku data and add as new column - PreparePickList (In Data Tab select fix broken links and open source and close it to get sku) [AUTO]
+  // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
+  // 5. Sort by upc [AUTO]
+  // 6. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist [AUTO]
+  // 7. Add stock data in column called "in stock",copy values to new sheet called invoiced [MANUAL]
+  // 8. sort by in stock, Delete all rows with 0 qty in stock
+  // 9. Sort by upc, then by store #
+  // 10. import via Zed Axis as invoice
+  // 11. Create Pivot table on new sheet with weight calculations  - store # (NOT PO) copy pivot table as values then add =ROUNDUP(E4*1.2+1, 0)and add invoice numbers before store # column
+  // 12. Create shipping labels or truck routing
+  // 13. Tracking numbers should be in order of invoices and sent via slack, add tracking # to qb invoice and to asn as well as weight from pivot table, items for stock report, and invoice number from quickbooks (Possibly create another sheet for this)
+  // 14. Print packing slip and ucc, they should be aligned for warehouse
+  // 15. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
+
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu()
     .addItem("Create Picklist", "createPicklist")
+    .addItem("Create Invoice Import and Shipping Calculator", "createInvoiceImport")
     .addItem('Open Voneddie Sidebar', 'showInstructions')
     .addToUi()
 }
@@ -12,15 +30,7 @@ function showInstructions(){
   SpreadsheetApp.getUi().showSidebar(html)
 }
 
-function createPicklist(){
-  // Process Steps
-  // 1. Download CSV and save as {PO number}.xlsx
-  // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
-  // 3. Retrieve Sku data and add as new column - PreparePickList (In Data Tab select fix broken links and open source and close it to get sku) [AUTO]
-  // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
-  // 5. Sort by upc [AUTO]
-  // 6. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist
-  // 7. Add stock data in column called "in stock",copy values to new sheet called invoiced
+function createInvoiceImport(){
   // 8. sort by in stock, Delete all rows with 0 qty in stock
   // 9. Sort by upc, then by store #
   // 10. import via Zed Axis as invoice
@@ -29,6 +39,24 @@ function createPicklist(){
   // 13. Tracking numbers should be in order of invoices and sent via slack, add tracking # to qb invoice and to asn as well as weight from pivot table, items for stock report, and invoice number from quickbooks (Possibly create another sheet for this)
   // 14. Print packing slip and ucc, they should be aligned for warehouse
   // 15. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
+  let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
+  let prePicklist = ss.getSheetByName('pre-picklist')
+  let prePicklistData = prePicklist.getDataRange().getValues()
+  let invoiceImportData = generateInvoiceImport(prePicklistData)
+  createNewSheetWithData(ss, invoiceImportData, "invoice import")
+  let shippingDetails = generateShippingDetails()
+  let ediDetails = generateEdiDetails()
+}
+
+function createPicklist(){
+  // Process Steps
+  // 1. Download CSV and save as {PO number}.xlsx [MANUAL]
+  // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
+  // 3. Retrieve Sku data and add as new column - PreparePickList (In Data Tab select fix broken links and open source and close it to get sku) [AUTO]
+  // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
+  // 5. Sort by upc [AUTO]
+  // 6. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist [AUTO]
+  // 7. Add stock data in column called "in stock",copy values to new sheet called invoiced [MANUAL]
   let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
   let sheet = ss.getSheets()[0]
   let sheetData = sheet.getDataRange().getValues()
@@ -89,12 +117,22 @@ const getColumnIndexes = (headerRow: Array<Object>) => {
     {
       header: "In Stock",
       columnName: 'inStock'
-    }
+    },
+    {
+      header: "Ship Not Before",
+      columnName: 'shipDate'
+    },
+    {
+      header: "Cancel After",
+      columnName: 'cancelDate'
+    },
+    {
+      header: "Unit Price",
+      columnName: 'price'
+    },
   ]
-  let indexes = {}
-  indexes = getColumns(headerRow, ColumnNames)
+  let indexes = getColumns(headerRow, ColumnNames)
   return indexes
-
 }
 
 const getColumns = (headerRow: Object[], columnNames) => {
@@ -177,12 +215,48 @@ const sortByUpc = (data) => {
 const generatePicklist = data => {
   let headerRow = data[0]
   // map through returning only the columns that I want
+  // Refactor to include only [sku, po, qty, and in stock]
   let columnIndices: Object = getColumnIndexes(headerRow)
   let headerIndices = Object.keys(columnIndices).map(key => columnIndices[key]).sort((a, b) => a - b) // [0, 1, 4, 24]
   return data.map(row => {
     let newRow = []
-    headerIndices.forEach(i => { Logger.log(i) ; newRow.push(row[i])})
+    headerIndices.forEach(i => { newRow.push(row[i])})
     return newRow
   })
 }
 
+const generateInvoiceImport = picklistData => {
+  // Output the following columns:
+    // sku, PO, PO Date (Maybe change to current date), cancel date, rate, in stock
+    let desiredHeaders = [
+      'sku',
+      'PO',
+      'Ship Not Before', 
+      'Cancel After',
+      'Unit Price',
+      'In Stock'
+    ] // I can easily read these from somewhere else i.e. input box, sidebar, another sheet, etc.
+    let newData = extractColumnsByHeader(picklistData, desiredHeaders)
+  // remove the 0 quantity rows
+  // sort by upc then store
+  return newData
+}
+
+const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[]) => {
+  let headerRow = sheetData[0]
+  // map headers into indexes
+  let indices = desiredHeaders.map(header => headerRow.indexOf(header)).filter(x => x === 0 || x)
+  // map through each row and return only if column index is in indices
+  let newData = sheetData.map(row => {
+    return row.map((el, i) => {
+      if(indices.indexOf(i) > -1){
+        return el
+      }
+    }).filter(x => x === 0 || x)
+  })
+  return newData
+}
+
+const generateShippingDetails = () => {}
+
+const generateEdiDetails = () => {}
