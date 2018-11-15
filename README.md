@@ -44,3 +44,20 @@ Prior to writing the script the following steps had to be taken manually:
 - [x] Add another sheet with shipping data and sku qtys by store
 - [ ] Generate another sheet with a checklist of all the steps in each row and a checkbox next to it
 
+
+## Next Steps
+
+I would like to abstract to a library of reusable general purpose functions
+- Some good candidates are :
+  - `extractColumnByHeader`
+  - `createNewSheetWithData`
+  - `insertDataAsColumns`
+  - `getSheetDataDimensions`
+  - `getSkuFromBarcodeReference` (relies on external api)
+
+For now, maybe I'll just take all of those functions and put them in one file and use them in future projects.
+But in the future I would like to publish them as a library or something.
+
+## Deployment
+
+I have to deploy as an add-on in order to reuse without insanity. It should be deployed via the google chrome webstore as an add-on for marcjosephny.com.
