@@ -56,14 +56,6 @@ function createInvoiceImport(){
 }
 
 function createPicklist(){
-  // Process Steps
-  // 1. Download CSV and save as {PO number}.xlsx [MANUAL]
-  // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
-  // 3. Retrieve Sku data and add as new column - PreparePickList (In Data Tab select fix broken links and open source and close it to get sku) [AUTO]
-  // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
-  // 5. Sort by upc [AUTO]
-  // 6. Print for warehouse - hide all columns beside sku, po, qty, and in stock - create new sheet called picklist [AUTO]
-  // 7. Add stock data in column called "in stock",copy values to new sheet called invoiced [MANUAL]
   let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
   let sheet = ss.getSheets()[0]
   let sheetData = sheet.getDataRange().getValues()
@@ -74,20 +66,15 @@ function createPicklist(){
 }
 
 function generatePrePicklist(sheetData: Object[][]) {
-  // Remove top row
   let newData = sheetData.filter((row, i) => i > 0)
   let headerRow = newData[0]
-  // 2. Add column for concatenated PO+store - PreparePickList [AUTO]
-  // 4. Remove extraneous data - DeleteUserDefinedColumns, add column called "in stock" - PreparePickList [AUTO]
   newData = deleteUserDefinedColumns(newData, headerRow)
   headerRow = newData[0]
   let { poColumnIndex, storeColumnIndex, barcodeColumnIndex } = getColumnIndexes(headerRow)
   newData = newData.map((row, i) => {  
     if(i === 0){ return ["sku", "PO", ...row, "In Stock"] }
-    // Add sku column
-    // 3. Retrieve Sku data and add as new column - PreparePickList
+
     let sku = getSkuFromBarcodeReference(row[barcodeColumnIndex])
-    // add PO column
     let po = row[poColumnIndex]
     let store = row[storeColumnIndex]
     let poWithStore = `${po}-${store}`
@@ -219,17 +206,28 @@ const sortByUpc = (data) => {
   return newData
 }
 
-const generatePicklist = data => {
-  let headerRow = data[0]
-  // map through returning only the columns that I want
-  // Refactor to include only [sku, po, qty, and in stock]
-  let columnIndices: Object = getColumnIndexes(headerRow)
-  let headerIndices = Object.keys(columnIndices).map(key => columnIndices[key]).sort((a, b) => a - b) // [0, 1, 4, 24]
-  return data.map(row => {
-    let newRow = []
-    headerIndices.forEach(i => { newRow.push(row[i])})
-    return newRow
-  })
+const generatePicklist = prePicklistData => {
+  let desiredHeaders = [
+    'PO',
+    'Product Code',
+    'sku',
+    'Qty Ordered',
+    'In Stock'
+  ] // I can easily read these from somewhere else i.e. input box, sidebar, another sheet, or by selection etc.
+  let newData = extractColumnsByHeader(prePicklistData, desiredHeaders)
+  let { barcodeColumnIndex } = getColumnIndexes(newData[0])
+  newData = newData.sort((a, b) => a[barcodeColumnIndex] - b[barcodeColumnIndex])
+  // let headerRow = prePicklistData[0]
+  // // map through returning only the columns that I want
+  // // Refactor to include only [sku, po, qty, and in stock]
+  // let columnIndices: Object = getColumnIndexes(headerRow)
+  // let headerIndices = Object.keys(columnIndices).map(key => columnIndices[key]).sort((a, b) => a - b) // [0, 1, 4, 24]
+  // return prePicklistData.map(row => {
+  //   let newRow = []
+  //   headerIndices.forEach(i => { newRow.push(row[i])})
+  //   return newRow
+  // })
+  return newData
 }
 
 const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[]) => {
@@ -242,7 +240,7 @@ const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[])
       if(indices.indexOf(i) > -1){
         return el
       }
-    }).filter(x => x === 0 || x)
+    }).filter(x => x === 0 || x === '' || x)
   })
   return newData
 }
@@ -294,7 +292,6 @@ const generateEdiQtyData = prePicklistData => {
     'Qty Ordered',
     'In Stock'
   ] // I can easily read these from somewhere else i.e. input box, sidebar, another sheet, etc.
-  // I might want to sort by upc > store here
   let newData = extractColumnsByHeader(prePicklistData, desiredHeaders)
   let newHeader = newData[0]
   let { barcodeColumnIndex, storeColumnIndex } = getColumnIndexes(newHeader)

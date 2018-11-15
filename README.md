@@ -41,6 +41,6 @@ Prior to writing the script the following steps had to be taken manually:
   - [x] sum units
   - [x] weight calculation =ROUNDUP(E4*1.2+1, 0)
 - [ ] Add message box informing that shipping data is available in the shipping tab and that tracking and invoices need to be entered there
-- [ ] Add another sheet with shipping data and sku qtys by store
+- [x] Add another sheet with shipping data and sku qtys by store
 - [ ] Generate another sheet with a checklist of all the steps in each row and a checkbox next to it
 
