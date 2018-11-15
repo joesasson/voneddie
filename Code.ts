@@ -15,6 +15,8 @@
   // 14. Print packing slip and ucc, they should be aligned for warehouse
   // 15. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
 
+// import { generateInvoiceImport }  from './generators/generateInvoiceImport'
+
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu()
     .addItem("Create Picklist", "createPicklist")
@@ -39,14 +41,18 @@ function createInvoiceImport(){
   // 13. Tracking numbers should be in order of invoices and sent via slack, add tracking # to qb invoice and to asn as well as weight from pivot table, items for stock report, and invoice number from quickbooks (Possibly create another sheet for this)
   // 14. Print packing slip and ucc, they should be aligned for warehouse
   // 15. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
-  let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
-  let prePicklist = ss.getSheetByName('pre-picklist')
-  let prePicklistData = prePicklist.getDataRange().getValues()
-  let invoiceImportData = generateInvoiceImport(prePicklistData)
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
+  const prePicklist = ss.getSheetByName('pre-picklist')
+  const prePicklistData = prePicklist.getDataRange().getValues()
+  const invoiceImportData = generateInvoiceImport(prePicklistData)
   createNewSheetWithData(ss, invoiceImportData, "Invoice Import")
-  let shippingDetailData = generateShippingDetails(invoiceImportData)
-  createNewSheetWithData(ss, shippingDetailData, "Shipping Details")
-  let ediDetails = generateEdiDetails()
+  const shippingDetailData = generateShippingDetails(invoiceImportData, prePicklistData)
+  let shippingDetailsSheet = createNewSheetWithData(ss, shippingDetailData, "Shipping Details")
+  // generate edi quantity data (ordered and fulfilled) with one sku per line
+  const ediQtyData = generateEdiQtyData(prePicklistData)
+  // insert it into the shipping details sheet
+  insertDataAsColumns(shippingDetailsSheet, ediQtyData, 7)
+  // fin
 }
 
 function createPicklist(){
@@ -241,20 +247,16 @@ const extractColumnsByHeader = (sheetData: Object[][], desiredHeaders: String[])
   return newData
 }
 
-const generateShippingDetails = invoiceData => {
+const generateShippingDetails = (invoiceData, stockData) => {
   // pivot data to store number, sum of in stock qty, weight calculation
   // the rest is manual invoice and tracking number after the import
   // create an object { storenumber1: sumqty, storenumber2: sumqty }
   let sumsByStore = sumStoreQtys(invoiceData)
-  Logger.log(sumsByStore)
   // then map through keys and return [storenumber, qty, weight,'','']
   // headers should be ['storenumber', 'qty', 'weight', 'invoice', 'tracking #']
   let shippingDetails = getShippingDetails(sumsByStore)
-  Logger.log(shippingDetails)
   return shippingDetails
 }
-
-const generateEdiDetails = () => {}
 
 const sumStoreQtys = sheetData => {
   let headerRow = sheetData[0]
@@ -272,12 +274,43 @@ const sumStoreQtys = sheetData => {
 const getShippingDetails = storeQtys => {
   return Object.keys(storeQtys).map((key, i) => {
     if(isNaN(Number(key))){
-      return [key, storeQtys[key], 'Weight', 'Invoice #', 'Tracking #']
+      return ["Store #", storeQtys[key], 'Weight', 'Invoice #', 'Tracking #', 
+      "<< Shipping Details | Stock Qtys >>"]
     }
     let qty = storeQtys[key]
     let weight = calculateWeight(qty)
-    return [key, qty, weight, '', '']
+    return [key, qty, weight, '', '', '']
   })
 }
 
 const calculateWeight = qty => Math.ceil(qty * 1.2 + 1)
+
+const generateEdiQtyData = prePicklistData => {
+  // extract columns from stockData and append to each row with .map
+  let desiredHeaders = [
+    'Buyer Store No',
+    'Product Code',
+    'sku',
+    'Qty Ordered',
+    'In Stock'
+  ] // I can easily read these from somewhere else i.e. input box, sidebar, another sheet, etc.
+  // I might want to sort by upc > store here
+  let newData = extractColumnsByHeader(prePicklistData, desiredHeaders)
+  let newHeader = newData[0]
+  let { barcodeColumnIndex, storeColumnIndex } = getColumnIndexes(newHeader)
+  newData = newData.sort((a, b) => a[barcodeColumnIndex] - b[barcodeColumnIndex])
+  .sort((a, b) => a[storeColumnIndex] - b[storeColumnIndex])
+  return newData
+}
+
+const insertDataAsColumns = (shippingDetailsSheet: GoogleAppsScript.Spreadsheet.Sheet, ediQtyData: Object[][], startColumn) => {
+  let { height, width } = getSheetDataDimensions(ediQtyData)
+  let targetRange = shippingDetailsSheet.getRange(1, startColumn, height, width)
+  targetRange.setValues(ediQtyData)
+}
+
+const getSheetDataDimensions = sheetData => {
+  let height = sheetData.length
+  let width = sheetData[0].length
+  return { height, width }
+}

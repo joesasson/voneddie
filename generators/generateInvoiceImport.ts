@@ -1,3 +1,5 @@
+// import { extractColumnsByHeader, getColumnIndexes } from '../Code'
+
 const generateInvoiceImport = picklistData => {
   let desiredHeaders = [
     'Product Code',
