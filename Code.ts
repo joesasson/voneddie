@@ -300,13 +300,13 @@ const generateEdiQtyData = prePicklistData => {
   return newData
 }
 
-const insertDataAsColumns = (shippingDetailsSheet: GoogleAppsScript.Spreadsheet.Sheet, ediQtyData: Object[][], startColumn) => {
-  let { height, width } = getSheetDataDimensions(ediQtyData)
-  let targetRange = shippingDetailsSheet.getRange(1, startColumn, height, width)
-  targetRange.setValues(ediQtyData)
+const insertDataAsColumns = (targetSheet: GoogleAppsScript.Spreadsheet.Sheet, insertData: Object[][], startColumn: number) => {
+  let { height, width } = getSheetDataDimensions(insertData)
+  let targetRange = targetSheet.getRange(1, startColumn, height, width)
+  targetRange.setValues(insertData)
 }
 
-const getSheetDataDimensions = sheetData => {
+const getSheetDataDimensions = (sheetData: Object[][]) => {
   let height = sheetData.length
   let width = sheetData[0].length
   return { height, width }
