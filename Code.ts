@@ -294,9 +294,13 @@ const generateEdiQtyData = prePicklistData => {
   ] // I can easily read these from somewhere else i.e. input box, sidebar, another sheet, etc.
   let newData = extractColumnsByHeader(prePicklistData, desiredHeaders)
   let newHeader = newData[0]
-  let { barcodeColumnIndex, storeColumnIndex } = getColumnIndexes(newHeader)
-  newData = newData.sort((a, b) => a[barcodeColumnIndex] - b[barcodeColumnIndex])
-  .sort((a, b) => a[storeColumnIndex] - b[storeColumnIndex])
+  let { barcodeColumnIndex, storeColumnIndex, inStockColumnIndex } = getColumnIndexes(newHeader)
+  // filter stores if they have 0 qty sum
+  // and sort by barcode then store
+  let qtysByStore = sumStoreQtys(newData)
+  newData = newData.filter((row, i) => i === 0 || qtysByStore[row[storeColumnIndex]] > 0)
+    .sort((a, b) => a[barcodeColumnIndex] - b[barcodeColumnIndex])
+    .sort((a, b) => a[storeColumnIndex] - b[storeColumnIndex])
   return newData
 }
 
