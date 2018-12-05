@@ -278,7 +278,8 @@ const getShippingDetails = storeQtys => {
     }
     let qty = storeQtys[key]
     let weight = calculateWeight(qty)
-    return [key, qty, weight, '', '', '']
+    let invoiceFormula = i > 1 ? `=IF(D${i} = "", , VALUE(D${i}) + 1)` : ''
+    return [key, qty, weight, invoiceFormula, '', '']
   })
 }
 
@@ -321,5 +322,4 @@ const insertTrackingNumberFormula = (sheet: GoogleAppsScript.Spreadsheet.Sheet) 
   let formulaString = `=IF(F2="",,TRANSPOSE(SPLIT(F2, ",")))`
   let targetCell = sheet.getRange("E2")
   targetCell.setFormula(formulaString)
-
 }
