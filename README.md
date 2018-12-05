@@ -1,5 +1,7 @@
 # Voneddie
 
+[![clasp](https://img.shields.io/badge/built%20with-clasp-4285f4.svg)](https://github.com/google/clasp)
+
 This project aims to automate the process for receiving and fulfilling an EDI order from Von Maur at Marc Joseph New York.
 
 It is written in Google Apps Script as a Google Sheet add-on utilizing [clasp](https://github.com/google/clasp).

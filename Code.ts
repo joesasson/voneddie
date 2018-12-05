@@ -41,7 +41,7 @@ function createInvoiceImport(){
   // 13. Tracking numbers should be in order of invoices and sent via slack, add tracking # to qb invoice and to asn as well as weight from pivot table, items for stock report, and invoice number from quickbooks (Possibly create another sheet for this)
   // 14. Print packing slip and ucc, they should be aligned for warehouse
   // 15. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
-  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1K-oJHMvn8eHkLRxttDVDlqOHgKzh1pMWzu82jpD3qKg/edit?addon_dry_run=AAnXSK8khiip6h6mhySrWtoGGGLTBgTblHgQ322iU_lW5CVCPnE5QdgNHi1U3-ApEnZsoqz5_b5LbS2SOPG8lgiONX3m5Ux-kqJ0LzVAOnJfGGmqY_WVm55oJVWuTN-YNA0u4LY4p9Bt#gid=968251087")
   const prePicklist = ss.getSheetByName('pre-picklist')
   const prePicklistData = prePicklist.getDataRange().getValues()
   const invoiceImportData = generateInvoiceImport(prePicklistData)
@@ -52,11 +52,12 @@ function createInvoiceImport(){
   const ediQtyData = generateEdiQtyData(prePicklistData)
   // insert it into the shipping details sheet
   insertDataAsColumns(shippingDetailsSheet, ediQtyData, 7)
+  insertTrackingNumberFormula(shippingDetailsSheet)
   // fin
 }
 
 function createPicklist(){
-  let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1a78mv6dg9-fSPa40VpiARr3Jjcd2amltNmUbO0FkBzY/edit?addon_dry_run=AAnXSK-bLW7mohOE2aG-EtDuUwWEMgh-2eSrgAwnEgBi4qzkf3e3kWwehTjehtB7zZiZqWPWaqYwxlGM8yzcnxl8J46pgT8RJoRteiyI0ncTrP8WehZqUe0JXH3o2DQq1hJyuFUh3JLa#gid=912552240")
+  let ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1K-oJHMvn8eHkLRxttDVDlqOHgKzh1pMWzu82jpD3qKg/edit?addon_dry_run=AAnXSK8khiip6h6mhySrWtoGGGLTBgTblHgQ322iU_lW5CVCPnE5QdgNHi1U3-ApEnZsoqz5_b5LbS2SOPG8lgiONX3m5Ux-kqJ0LzVAOnJfGGmqY_WVm55oJVWuTN-YNA0u4LY4p9Bt#gid=968251087")
   let sheet = ss.getSheets()[0]
   let sheetData = sheet.getDataRange().getValues()
   let prePicklistData = generatePrePicklist(sheetData)
@@ -125,14 +126,14 @@ const getColumnIndexes = (headerRow: Array<Object>) => {
       columnName: 'price'
     },
   ]
-  let indexes = getColumns(headerRow, ColumnNames)
-  return indexes
+  let indices = getColumns(headerRow, ColumnNames)
+  return indices
 }
 
 const getColumns = (headerRow: Object[], columnNames) => {
-  let indexes = {}
-  columnNames.forEach(col => indexes[`${col.columnName}ColumnIndex`] = getColumnIndex(headerRow, col.header))
-  return indexes
+  let indices = {}
+  columnNames.forEach(col => indices[`${col.columnName}ColumnIndex`] = getColumnIndex(headerRow, col.header))
+  return indices
 }
 
 const getColumnIndex = (headerRow: Array<Object>, headerTitle: String, name?: String) =>  { 
@@ -314,4 +315,11 @@ const getSheetDataDimensions = (sheetData: Object[][]) => {
   let height = sheetData.length
   let width = sheetData[0].length
   return { height, width }
+}
+
+const insertTrackingNumberFormula = (sheet: GoogleAppsScript.Spreadsheet.Sheet) => {
+  let formulaString = `=IF(F2="",,TRANSPOSE(SPLIT(F2, ",")))`
+  let targetCell = sheet.getRange("E2")
+  targetCell.setFormula(formulaString)
+
 }

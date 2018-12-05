@@ -1,9 +1,5 @@
-jsconfig.json
-package-lock.json
-tsconfig.json
-.gitignore
-/node_modules
-README.md
-VonMaurAutomation.bas
-/.git
-.claspignore
+**/**
+!Code.ts
+!appsscript.json
+!Page.html
+!generators/**
