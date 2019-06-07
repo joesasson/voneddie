@@ -41,7 +41,7 @@ function createInvoiceImport(){
   // 13. Tracking numbers should be in order of invoices and sent via slack, add tracking # to qb invoice and to asn as well as weight from pivot table, items for stock report, and invoice number from quickbooks (Possibly create another sheet for this)
   // 14. Print packing slip and ucc, they should be aligned for warehouse
   // 15. Create EDI invoice based on tracking # from slack, invoice from quickbooks, and remove missing item via warehouse stock report
-  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1K-oJHMvn8eHkLRxttDVDlqOHgKzh1pMWzu82jpD3qKg/edit?addon_dry_run=AAnXSK8khiip6h6mhySrWtoGGGLTBgTblHgQ322iU_lW5CVCPnE5QdgNHi1U3-ApEnZsoqz5_b5LbS2SOPG8lgiONX3m5Ux-kqJ0LzVAOnJfGGmqY_WVm55oJVWuTN-YNA0u4LY4p9Bt#gid=968251087")
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1K-oJHMvn8eHkLRxttDVDlqOHgKzh1pMWzu82jpD3qKg/edit")
   const prePicklist = ss.getSheetByName('pre-picklist')
   const prePicklistData = prePicklist.getDataRange().getValues()
   const invoiceImportData = generateInvoiceImport(prePicklistData)
@@ -51,9 +51,28 @@ function createInvoiceImport(){
   // generate edi quantity data (ordered and fulfilled) with one sku per line
   const ediQtyData = generateEdiQtyData(prePicklistData)
   // insert it into the shipping details sheet
-  insertDataAsColumns(shippingDetailsSheet, ediQtyData, 7)
+  const qtyDataRange = insertDataAsColumns(shippingDetailsSheet, ediQtyData, 7)
   insertTrackingNumberFormula(shippingDetailsSheet)
+	applyConditionalFormatting(shippingDetailsSheet, qtyDataRange)
   // fin
+}
+
+function applyConditionalFormatting(sheet, qtyDataRange){
+	const storeRule = SpreadsheetApp.newConditionalFormatRule()
+		.whenFormulaSatisfied("=iseven(match($J1,unique($J$1:$J$5000),0))")
+		.setBackground("#00FF00")
+		.setRanges([qtyDataRange])
+		.build();
+	const inStockRange = sheet.getRange("K2:K1000")
+	const missingRule = SpreadsheetApp.newConditionalFormatRule()
+		.whenNumberEqualTo(0)
+		.setBackground("#ea9999")
+		.setRanges([inStockRange])
+		.build();
+	let rules = sheet.getConditionalFormatRules();
+	rules.push(missingRule);
+	rules.push(storeRule);
+	sheet.setConditionalFormatRules(rules);
 }
 
 function createPicklist(){
@@ -63,7 +82,9 @@ function createPicklist(){
   let prePicklistData = generatePrePicklist(sheetData)
   createNewSheetWithData(ss, prePicklistData, "pre-picklist")
   let picklistData = generatePicklist(prePicklistData)
-  createNewSheetWithData(ss, picklistData, "picklist")
+  let cancelDate = prePicklistData[1][13]
+  let dateString = `${cancelDate.getMonth()}/${cancelDate.getDate()}`
+  createNewSheetWithData(ss, picklistData, `picklist - Von Maur Refill - cancel: ${dateString}`)
 }
 
 function generatePrePicklist(sheetData: Object[][]) {
@@ -274,7 +295,7 @@ const getShippingDetails = storeQtys => {
   return Object.keys(storeQtys).map((key, i) => {
     if(isNaN(Number(key))){
       return ["Store #", storeQtys[key], 'Weight', 'Invoice #', 'Tracking #', 
-      "<< Shipping Details | Stock Qtys >>"]
+      "Tracking String Below"]
     }
     let qty = storeQtys[key]
     let weight = calculateWeight(qty)
@@ -283,7 +304,7 @@ const getShippingDetails = storeQtys => {
   })
 }
 
-const calculateWeight = qty => Math.ceil(qty * 1.2 + 1)
+const calculateWeight = qty => Math.ceil(qty * 1.2)
 
 const generateEdiQtyData = prePicklistData => {
   // extract columns from stockData and append to each row with .map
@@ -310,6 +331,7 @@ const insertDataAsColumns = (targetSheet: GoogleAppsScript.Spreadsheet.Sheet, in
   let { height, width } = getSheetDataDimensions(insertData)
   let targetRange = targetSheet.getRange(1, startColumn, height, width)
   targetRange.setValues(insertData)
+	return targetRange
 }
 
 const getSheetDataDimensions = (sheetData: Object[][]) => {
@@ -319,7 +341,7 @@ const getSheetDataDimensions = (sheetData: Object[][]) => {
 }
 
 const insertTrackingNumberFormula = (sheet: GoogleAppsScript.Spreadsheet.Sheet) => {
-  let formulaString = `=IF(F2="",,TRANSPOSE(SPLIT(F2, ",")))`
+  let formulaString = `=IF(F2="",,TRANSPOSE(SPLIT(F2, ", ")))`
   let targetCell = sheet.getRange("E2")
   targetCell.setFormula(formulaString)
 }
