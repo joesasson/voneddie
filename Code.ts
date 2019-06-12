@@ -46,7 +46,6 @@ function createInvoiceImport(){
   // const prePicklist = ss.getSheetByName('pre-picklist')
 
   // const prePicklistData = prePicklist.getDataRange().getValues()
-  const orderData = ss.getSheets()[0].getDataRange().getValues()
   const fulfillmentData = ss.getSheetByName("picklist").getDataRange().getValues()
   // Get raw data + in stock data from picklist
   const invoiceImportData = generateInvoiceImport(fulfillmentData)
@@ -313,6 +312,8 @@ const generateShippingDetails = picklistData => {
   // then map through keys and return [storenumber, qty, weight,'','']
   // headers should be ['storenumber', 'qty', 'weight', 'invoice', 'tracking #']
   let shippingDetails = getShippingDetails(sumsByStore)
+  // quick fix for filtering rows with 0 in stock and sorting by store
+  shippingDetails = shippingDetails.filter(row => row[1] !== 0).sort((a, b) => a[0] - b[0])
   return shippingDetails
 }
 
